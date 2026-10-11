@@ -13,9 +13,9 @@ private:
 public:
     Step(int snum, string title, string description);
 
-    int getSnum();
-    string getTitle();
-    string getDescription();
+    int getSnum() const;
+    string getTitle() const;
+    string getDescription() const;
 };
 
 #endif
