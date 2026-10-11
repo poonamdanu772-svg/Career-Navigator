@@ -4,6 +4,8 @@
 #include <limits>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <cctype>
 
 #include "User.h"
 #include "Career.h"
@@ -14,14 +16,33 @@
 
 using namespace std;
 
+string normalizeText(string text)
+{
+    transform(text.begin(), text.end(), text.begin(),
+        [](unsigned char ch)
+        {
+            return static_cast<char>(tolower(ch));
+        });
+
+    size_t start = text.find_first_not_of(" \t\r\n");
+
+    if (start == string::npos)
+        return "";
+
+    size_t end = text.find_last_not_of(" \t\r\n");
+
+    return text.substr(start, end - start + 1);
+}
+
 int main()
 {
-    cout << "=====================================\n";
-    cout << "        CAREER NAVIGATOR\n";
-    cout << "=====================================\n\n";
+    cout << "========================================\n";
+    cout << "           CAREER NAVIGATOR\n";
+    cout << "========================================\n\n";
 
-    // 1. Collect the user profile
-    string name, education, stream, interests, skills, careerGoal;
+    // 1. Collect user information
+    string name, education, stream;
+    string interests, skills, careerGoal;
     int age;
     double budget;
 
@@ -29,11 +50,15 @@ int main()
     getline(cin, name);
 
     cout << "Enter your age: ";
-    if (!(cin >> age) || age < User::MIN_AGE || age > User::MAX_AGE)
+
+    if (!(cin >> age) ||
+        age < User::MIN_AGE ||
+        age > User::MAX_AGE)
     {
         cout << "Invalid age.\n";
         return 1;
     }
+
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     cout << "Enter your education level: ";
@@ -42,23 +67,26 @@ int main()
     cout << "Enter your academic stream: ";
     getline(cin, stream);
 
-    cout << "Enter interests (comma-separated): ";
+    cout << "Enter your interests (comma-separated): ";
     getline(cin, interests);
 
-    cout << "Enter skills (comma-separated): ";
+    cout << "Enter your skills (comma-separated): ";
     getline(cin, skills);
 
     cout << "Enter your education/training budget: ";
+
     if (!(cin >> budget) || budget < 0)
     {
         cout << "Invalid budget.\n";
         return 1;
     }
+
     cin.ignore(numeric_limits<streamsize>::max(), '\n');
 
     cout << "Enter your long-term career goal: ";
     getline(cin, careerGoal);
 
+    // 2. Create the user profile
     User user;
 
     if (!user.setName(name) ||
@@ -70,18 +98,18 @@ int main()
         !user.setBudget(budget) ||
         !user.setCareerGoal(careerGoal))
     {
-        cout << "Invalid profile details.\n";
+        cout << "Invalid profile information.\n";
         return 1;
     }
 
     cout << "\nProfile created successfully!\n";
 
-    // 2. Load careers from the CSV file
+    // 3. Load the career database
     CareerDatabase database;
 
     if (!database.loadFromFile("careers.csv"))
     {
-        cout << "Could not load careers.csv.\n";
+        cout << "Unable to load careers.csv.\n";
         return 1;
     }
 
@@ -89,11 +117,11 @@ int main()
 
     if (careers.empty())
     {
-        cout << "No careers are available.\n";
+        cout << "The career database is empty.\n";
         return 1;
     }
 
-    // 3. Generate recommendations
+    // 4. Generate recommendations
     RecommendationEngine engine;
 
     vector<Recommendation> recommendations =
@@ -101,15 +129,66 @@ int main()
 
     if (recommendations.empty())
     {
-        cout << "No career recommendations available.\n";
+        cout << "No recommendations could be generated.\n";
         return 0;
     }
 
-    cout << "\n========== CAREER RECOMMENDATIONS ==========\n";
+    // 5. Sort recommendations by score
+    sort(recommendations.begin(), recommendations.end(),
+        [](const Recommendation& a, const Recommendation& b)
+        {
+            return a.score > b.score;
+        });
+
+    // 6. Remove duplicate career names
+    vector<Recommendation> uniqueRecommendations;
+
+    for (const auto& recommendation : recommendations)
+    {
+        string currentName =
+            normalizeText(recommendation.career.getName());
+
+        if (currentName.empty())
+            continue;
+
+        bool duplicate = false;
+
+        for (const auto& existing : uniqueRecommendations)
+        {
+            if (normalizeText(existing.career.getName()) == currentName)
+            {
+                duplicate = true;
+                break;
+            }
+        }
+
+        if (!duplicate)
+            uniqueRecommendations.push_back(recommendation);
+    }
+
+    recommendations = uniqueRecommendations;
+
+    if (recommendations.empty())
+    {
+        cout << "No valid career recommendations found.\n";
+        return 0;
+    }
+
+    // 7. Display the five highest-ranked careers
+    const size_t MAX_RECOMMENDATIONS = 5;
+
+    if (recommendations.size() > MAX_RECOMMENDATIONS)
+    {
+        recommendations.resize(MAX_RECOMMENDATIONS);
+    }
 
     cout << fixed << setprecision(1);
 
-    for (size_t i = 0; i < recommendations.size(); i++)
+    cout << "\n========================================\n";
+    cout << "       YOUR TOP CAREER MATCHES\n";
+    cout << "========================================\n";
+
+    for (size_t i = 0; i < recommendations.size(); ++i)
     {
         cout << i + 1 << ". "
              << recommendations[i].career.getName()
@@ -118,53 +197,85 @@ int main()
              << "% match\n";
     }
 
-    // 4. Let the user select a recommended career
-    int choice;
+    cout << "\nTotal recommended careers: "
+         << recommendations.size() << "\n";
 
-    cout << "\nEnter the number of the career to explore: ";
-
-    if (!(cin >> choice) ||
-        choice < 1 ||
-        choice > static_cast<int>(recommendations.size()))
+    // 8. Allow repeated roadmap exploration
+    while (true)
     {
-        cout << "Invalid career selection.\n";
-        return 1;
+        string selectedName;
+
+        cout << "\nEnter a recommended career name to view its roadmap";
+        cout << "\n(Type exit to quit): ";
+
+        getline(cin, selectedName);
+
+        string normalizedSelection = normalizeText(selectedName);
+
+        if (normalizedSelection == "exit" ||
+            normalizedSelection == "quit")
+        {
+            break;
+        }
+
+        const Career* selectedCareer = nullptr;
+
+        for (const auto& recommendation : recommendations)
+        {
+            if (normalizeText(recommendation.career.getName())
+                == normalizedSelection)
+            {
+                selectedCareer = &recommendation.career;
+                break;
+            }
+        }
+
+        if (selectedCareer == nullptr)
+        {
+            cout << "Career not found in your recommended list.\n";
+            cout << "Please enter one of the displayed career names.\n";
+            continue;
+        }
+
+        // 9. Load the selected career roadmap
+        Roadmap roadmap(selectedCareer->getName());
+
+        if (!roadmap.loadStepsFromCSV("roadmap_data.csv"))
+        {
+            cout << "\nNo roadmap is available for "
+                 << selectedCareer->getName() << ".\n";
+        }
+        else
+        {
+            cout << "\n========================================\n";
+            cout << "ROADMAP: "
+                 << selectedCareer->getName() << "\n";
+            cout << "========================================\n";
+
+            for (const Step& step : roadmap.getSteps())
+            {
+                cout << "\nStep " << step.getSnum()
+                     << ": " << step.getTitle() << "\n";
+
+                cout << step.getDescription() << "\n";
+            }
+
+            cout << "\n========================================\n";
+        }
+
+        // 10. Ask whether the user wants another roadmap
+        string answer;
+
+        cout << "\nWould you like to explore another recommended career? (yes/no): ";
+        getline(cin, answer);
+
+        answer = normalizeText(answer);
+
+        if (answer != "yes" && answer != "y")
+            break;
     }
 
-    cin.ignore(numeric_limits<streamsize>::max(), '\n');
-
-    const Career& selectedCareer =
-        recommendations[choice - 1].career;
-
-    cout << "\nSelected career: "
-         << selectedCareer.getName() << "\n";
-
-    cout << "Education requirement: "
-         << selectedCareer.getRequiredEducation() << "\n";
-
-    // 5. Load and display the selected career's roadmap
-    Roadmap roadmap(selectedCareer.getName());
-
-    if (!roadmap.loadStepsFromCSV("roadmap_data.csv"))
-    {
-        cout << "\nNo roadmap found for "
-             << selectedCareer.getName() << ".\n";
-        cout << "Check that the career name matches the CSV exactly.\n";
-        return 0;
-    }
-
-    cout << "\n========== YOUR CAREER ROADMAP ==========\n";
-
-    for (const Step& step : roadmap.getSteps())
-    {
-        cout << "\nStep " << step.getSnum()
-             << ": " << step.getTitle() << "\n";
-
-        cout << step.getDescription() << "\n";
-    }
-
-    cout << "\n=========================================\n";
-    cout << "Thank you for using Career Navigator!\n";
+    cout << "\nThank you for using Career Navigator!\n";
 
     return 0;
 }
