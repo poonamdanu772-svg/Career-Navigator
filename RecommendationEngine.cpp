@@ -1,4 +1,3 @@
-
 #include "RecommendationEngine.h"
 #include <algorithm>
 #include <cctype>
@@ -8,7 +7,7 @@
 
 using namespace std;
 
-// Convert text to lowercase and remove extra spaces
+// Convert text to lowercase and remove leading/trailing spaces
 string normalize(string text)
 {
     transform(text.begin(), text.end(), text.begin(),
@@ -17,10 +16,12 @@ string normalize(string text)
         });
 
     size_t start = text.find_first_not_of(" \t\r\n");
+
     if (start == string::npos)
         return "";
 
     size_t end = text.find_last_not_of(" \t\r\n");
+
     return text.substr(start, end - start + 1);
 }
 
@@ -42,12 +43,12 @@ vector<string> splitInput(const string& input)
     return values;
 }
 
-// Calculate the match score for one career
+// Calculate match score for one career
 double RecommendationEngine::calculateScore(
     const User& user,
     const Career& career)
 {
-    // 1. Education score
+    // 1. Education match: 40%
     double educationScore = 0.0;
 
     string userEducation = normalize(user.getEducation());
@@ -61,7 +62,7 @@ double RecommendationEngine::calculateScore(
         educationScore = 1.0;
     }
 
-    // 2. Interest score
+    // 2. Interest match: 30%
     vector<string> userInterests =
         splitInput(user.getInterests());
 
@@ -92,7 +93,7 @@ double RecommendationEngine::calculateScore(
             careerInterests.size();
     }
 
-    // 3. Skill score
+    // 3. Skill match: 30%
     vector<string> userSkills =
         splitInput(user.getSkills());
 
@@ -120,30 +121,34 @@ double RecommendationEngine::calculateScore(
             requiredSkills.size();
     }
 
-    // 4. Weighted final score
-    double finalScore =
-        (0.40 * educationScore) +
-        (0.30 * interestScore) +
-        (0.30 * skillScore);
-
-    return finalScore;
+    // 4. Calculate weighted final score
+    return (0.40 * educationScore) +
+           (0.30 * interestScore) +
+           (0.30 * skillScore);
 }
 
-// Recommend careers from highest score to lowest
+// Recommend relevant careers from highest to lowest score
 vector<Recommendation> RecommendationEngine::recommendCareers(
     const User& user,
     const vector<Career>& careers)
 {
     vector<Recommendation> recommendations;
 
+    // Change this value to adjust how selective recommendations are.
+    const double MINIMUM_SCORE = 0.50;
+
     for (const auto& career : careers)
     {
         double score = calculateScore(user, career);
 
-        Recommendation result{career, score};
-        recommendations.push_back(result);
+        // Include only careers that meet the minimum score.
+        if (score >= MINIMUM_SCORE)
+        {
+            recommendations.push_back({career, score});
+        }
     }
 
+    // Sort from highest score to lowest
     sort(recommendations.begin(), recommendations.end(),
         [](const Recommendation& a, const Recommendation& b)
         {
@@ -152,4 +157,3 @@ vector<Recommendation> RecommendationEngine::recommendCareers(
 
     return recommendations;
 }
-
