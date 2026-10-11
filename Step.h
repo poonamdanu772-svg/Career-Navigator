@@ -1,3 +1,4 @@
+
 #ifndef STEP_H
 #define STEP_H
 
@@ -13,9 +14,9 @@ private:
 public:
     Step(int snum, string title, string description);
 
-    int getSnum() const ;
-    string getTitle() const ;
-    string getDescription() const ;
+    int getSnum() const;
+    string getTitle() const;
+    string getDescription() const;
 };
 
 #endif
