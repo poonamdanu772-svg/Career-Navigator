@@ -6,15 +6,18 @@ Step ::Step(int snum, string title, string description) {
     this->description = description;
 }
 
-int Step::getSnum() {
+int Step::getSnum() const
+{
     return snum;
 }
 
-string Step::getTitle() {
+string Step::getTitle() const
+{
     return title;
 }
 
-string Step::getDescription() {
+string Step::getDescription() const
+{
     return description;
 }
 
