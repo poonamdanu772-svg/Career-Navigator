@@ -1,155 +1,134 @@
-
 #include "RecommendationEngine.h"
 #include <algorithm>
 #include <cctype>
 #include <sstream>
-#include <string>
-#include <vector>
 
-using namespace std;
-
-// Convert text to lowercase and remove extra spaces
-string normalize(string text)
-{
-    transform(text.begin(), text.end(), text.begin(),
-        [](unsigned char ch) {
-            return static_cast<char>(tolower(ch));
-        });
-
-    size_t start = text.find_first_not_of(" \t\r\n");
-    if (start == string::npos)
-        return "";
-
-    size_t end = text.find_last_not_of(" \t\r\n");
-    return text.substr(start, end - start + 1);
-}
-
-// Split comma-separated user input into individual values
-vector<string> splitInput(const string& input)
-{
-    vector<string> values;
-    string item;
-    stringstream ss(input);
-
-    while (getline(ss, item, ','))
-    {
-        item = normalize(item);
-
-        if (!item.empty() && item != "not set")
-            values.push_back(item);
+namespace {
+    std::string normalize(std::string text) {
+        for (char& ch : text) {
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+        std::size_t first = text.find_first_not_of(" \t\r\n");
+        if (first == std::string::npos) return "";
+        std::size_t last = text.find_last_not_of(" \t\r\n");
+        return text.substr(first, last - first + 1);
     }
 
-    return values;
-}
-
-// Calculate the match score for one career
-double RecommendationEngine::calculateScore(
-    const User& user,
-    const Career& career)
-{
-    // 1. Education score
-    double educationScore = 0.0;
-
-    string userEducation = normalize(user.getEducation());
-    string requiredEducation =
-        normalize(career.getRequiredEducation());
-
-    if (!userEducation.empty() &&
-        userEducation != "not set" &&
-        userEducation == requiredEducation)
-    {
-        educationScore = 1.0;
+    std::vector<std::string> splitInput(const std::string& input) {
+        std::vector<std::string> values;
+        std::stringstream stream(input);
+        std::string item;
+        while (std::getline(stream, item, ',')) {
+            item = normalize(item);
+            if (!item.empty() && item != "not set") values.push_back(item);
+        }
+        return values;
     }
 
-    // 2. Interest score
-    vector<string> userInterests =
-        splitInput(user.getInterests());
+    bool contains(const std::vector<std::string>& values, const std::string& target) {
+        for (const std::string& value : values) {
+            if (value == target) return true;
+        }
+        return false;
+    }
 
-    const auto& careerInterests = career.getInterests();
+    double educationMatch(const User& user, const Career& career) {
+        std::string userEducation = normalize(user.getEducation());
+        std::string requiredEducation = normalize(career.getRequiredEducation());
 
-    int matchingInterests = 0;
+        if (userEducation.empty() || userEducation == "not set" ||
+            requiredEducation.empty()) return 0.0;
 
-    for (const auto& careerInterest : careerInterests)
-    {
-        string requiredInterest = normalize(careerInterest);
-
-        for (const auto& userInterest : userInterests)
-        {
-            if (requiredInterest == userInterest)
-            {
-                matchingInterests++;
-                break;
+        std::vector<std::string> userWords;
+        std::stringstream userStream(userEducation);
+        std::string word;
+        while (userStream >> word) {
+            if (word.size() > 2 && word != "and" && word != "for" &&
+                word != "the" && word != "with" && word != "related") {
+                userWords.push_back(word);
             }
         }
+
+        for (const std::string& userWord : userWords) {
+            if (requiredEducation.find(userWord) != std::string::npos) return 1.0;
+        }
+
+        // Common shorthand for computing degrees.
+        if ((userEducation.find("cse") != std::string::npos ||
+             userEducation.find("computer") != std::string::npos ||
+             userEducation.find("it") == 0) &&
+            (requiredEducation.find("computer") != std::string::npos ||
+             requiredEducation.find("information technology") != std::string::npos ||
+             requiredEducation.find("related") != std::string::npos)) return 1.0;
+
+        return 0.0;
     }
 
-    double interestScore = 0.0;
+    double interestMatch(const User& user, const Career& career) {
+        std::vector<std::string> interests = splitInput(user.getInterests());
+        const std::vector<std::string>& required = career.getInterests();
+        if (required.empty()) return 0.0;
 
-    if (!careerInterests.empty())
-    {
-        interestScore =
-            static_cast<double>(matchingInterests) /
-            careerInterests.size();
+        int matches = 0;
+        for (const std::string& item : required) {
+            if (contains(interests, normalize(item))) ++matches;
+        }
+        return static_cast<double>(matches) / required.size();
     }
 
-    // 3. Skill score
-    vector<string> userSkills =
-        splitInput(user.getSkills());
+    double skillMatch(const User& user, const Career& career) {
+        std::vector<std::string> skills = splitInput(user.getSkills());
+        const std::vector<std::string>& required = career.getRequiredSkills();
+        if (required.empty()) return 0.0;
 
-    const auto& requiredSkills = career.getRequiredSkills();
+        int matches = 0;
+        for (const std::string& item : required) {
+            if (contains(skills, normalize(item))) ++matches;
+        }
+        return static_cast<double>(matches) / required.size();
+    }
 
-    int matchingSkills = 0;
+    double weightedScore(const User& user, const Career& career,
+                         double educationWeight, double interestWeight,
+                         double skillWeight) {
+        return educationWeight * educationMatch(user, career) +
+               interestWeight * interestMatch(user, career) +
+               skillWeight * skillMatch(user, career);
+    }
+}
 
-    for (const auto& requiredSkill : requiredSkills)
-    {
-        string normalizedSkill = normalize(requiredSkill);
+// Balanced: education 20%, interests 40%, skills 40%.
+double BalancedRecommendationStrategy::calculateScore(
+    const User& user, const Career& career) const {
+    return weightedScore(user, career, 0.20, 0.40, 0.40);
+}
 
-        if (find(userSkills.begin(), userSkills.end(),
-                 normalizedSkill) != userSkills.end())
-        {
-            matchingSkills++;
+// Interest-focused: education 15%, interests 60%, skills 25%.
+double InterestFocusedStrategy::calculateScore(
+    const User& user, const Career& career) const {
+    return weightedScore(user, career, 0.15, 0.60, 0.25);
+}
+
+std::vector<Recommendation> RecommendationEngine::recommendCareers(
+    const User& user, const std::vector<Career>& careers,
+    const RecommendationStrategy& strategy) const {
+    std::vector<Recommendation> recommendations;
+
+    for (const Career& career : careers) {
+        // RUNTIME POLYMORPHISM.
+        // This virtual call uses the selected derived strategy's implementation.
+        double score = strategy.calculateScore(user, career);
+        if (score > 0.0) {
+            Recommendation result = {career, score};
+            recommendations.push_back(result);
         }
     }
 
-    double skillScore = 0.0;
-
-    if (!requiredSkills.empty())
-    {
-        skillScore =
-            static_cast<double>(matchingSkills) /
-            requiredSkills.size();
-    }
-
-    // 4. Weighted final score
-    double finalScore =
-        (0.40 * educationScore) +
-        (0.30 * interestScore) +
-        (0.30 * skillScore);
-
-    return finalScore;
-}
-
-// Recommend careers from highest score to lowest
-vector<Recommendation> RecommendationEngine::recommendCareers(
-    const User& user,
-    const vector<Career>& careers)
-{
-    vector<Recommendation> recommendations;
-
-    for (const auto& career : careers)
-    {
-        double score = calculateScore(user, career);
-
-        Recommendation result{career, score};
-        recommendations.push_back(result);
-    }
-
-    sort(recommendations.begin(), recommendations.end(),
-        [](const Recommendation& a, const Recommendation& b)
-        {
+    // Higher scores first; if scores tie, keep the original CSV order.
+    std::stable_sort(recommendations.begin(), recommendations.end(),
+        [](const Recommendation& a, const Recommendation& b) {
             return a.score > b.score;
         });
 
     return recommendations;
 }
-

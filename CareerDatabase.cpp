@@ -19,13 +19,11 @@ static vector<string> splitValues(const string& text)
 
     while (getline(stream, value, '|'))
     {
-        // Remove leading spaces
         size_t start = value.find_first_not_of(" \t\r\n");
 
         if (start == string::npos)
             continue;
 
-        // Remove trailing spaces
         size_t end = value.find_last_not_of(" \t\r\n");
         value = value.substr(start, end - start + 1);
 
@@ -35,7 +33,7 @@ static vector<string> splitValues(const string& text)
     return values;
 }
 
-// Parse one CSV row, respecting quoted commas and escaped quotes
+// Parse CSV while respecting quoted commas and escaped quotes
 static vector<string> parseCSVLine(const string& line)
 {
     vector<string> fields;
@@ -103,20 +101,22 @@ bool CareerDatabase::loadFromFile(const string& filename)
         vector<string> fields = parseCSVLine(line);
 
         // Expected columns:
-        // name, career_category, education, interests, skills
-        if (fields.size() != 4)
+        // name, description, education, interests, skills
+        if (fields.size() != 5)
         {
             cerr << "Skipping invalid row: " << line << '\n';
             continue;
         }
 
         string name = fields[0];
-        string education = fields[1];
-        string interestsText = fields[2];
-        string skillsText = fields[3];
+        string description = fields[1];
+        string education = fields[2];
+        string interestsText = fields[3];
+        string skillsText = fields[4];
 
         loadedCareers.emplace_back(
             name,
+            description,
             education,
             splitValues(interestsText),
             splitValues(skillsText)
@@ -136,9 +136,6 @@ bool CareerDatabase::loadFromFile(const string& filename)
     }
 
     careers = std::move(loadedCareers);
-
-    cout << "Loaded " << careers.size()
-         << " careers successfully.\n";
 
     return true;
 }

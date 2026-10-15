@@ -1,3 +1,4 @@
+
 #ifndef CAREER_H
 #define CAREER_H
 
@@ -7,16 +8,19 @@
 class Career {
 private:
     std::string name;
+    std::string description;
     std::string requiredEducation;
     std::vector<std::string> interests;
     std::vector<std::string> requiredSkills;
 
 public:
-    Career(std::string name, std::string education,
+    Career(std::string name, std::string description,
+           std::string education,
            std::vector<std::string> interests,
            std::vector<std::string> skills);
 
     std::string getName() const;
+    std::string getDescription() const;
     std::string getRequiredEducation() const;
 
     const std::vector<std::string>& getInterests() const;

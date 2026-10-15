@@ -1,3 +1,4 @@
+
 #ifndef ROADMAP_H
 #define ROADMAP_H
 
@@ -7,18 +8,23 @@
 
 using namespace std;
 
-class Roadmap {
-    private:
-     vector<Step> steps;
-     string CareerName;
-    public:
-    
-     Roadmap(string name);
-     string getCareerName();
-     void addStep(Step step);
-     vector<Step> getSteps();
+class Roadmap
+{
+private:
+    string careerName;
+    string pathType;
+    vector<Step> steps;
 
-     bool loadStepsFromCSV(const string& filename);
+public:
+    Roadmap(const string& careerName, const string& pathType);
+
+    string getCareerName() const;
+    string getPathType() const;
+
+    void addStep(const Step& step);
+    const vector<Step>& getSteps() const;
+
+    bool loadStepsFromCSV(const string& filename);
 };
 
 #endif
