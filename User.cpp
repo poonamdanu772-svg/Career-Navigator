@@ -117,7 +117,5 @@ void User::displayProfile() const {
     std::cout << "Stream      : " << stream << "\n";
     std::cout << "Interests   : " << interests << "\n";
     std::cout << "Skills      : " << skills << "\n";
-    std::cout << "Budget      : " << budget << "\n";
-    std::cout << "Career Goal : " << careerGoal << "\n";
     std::cout << "==================================\n";
 }
