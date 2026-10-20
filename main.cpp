@@ -73,10 +73,9 @@ int main()
     cout << "========================================\n\n";
 
     // 1. Collect user profile.
-    string name, education, stream, interests, skills, careerGoal;
+    string name, education, stream, interests, skills;
     int age;
     double ageInput;
-    double budget;
 
     cout << "Enter your name: ";
     getline(cin, name);
@@ -106,17 +105,6 @@ int main()
     cout << "Enter skills separated by commas: ";
     getline(cin, skills);
 
-    cout << "Enter your education/training budget: ";
-
-    if (!readNumber(budget) || budget < 0)
-    {
-        cout << "Invalid budget. Enter a non-negative number.\n";
-        return 1;
-    }
-
-    cout << "Enter your long-term career goal: ";
-    getline(cin, careerGoal);
-
     User user;
 
     if (!user.setName(name) ||
@@ -124,9 +112,7 @@ int main()
         !user.setEducation(education) ||
         !user.setStream(stream) ||
         !user.setInterests(interests) ||
-        !user.setSkills(skills) ||
-        !user.setBudget(budget) ||
-        !user.setCareerGoal(careerGoal))
+        !user.setSkills(skills))
     {
         cout << "Invalid profile. Please check your entries.\n";
         return 1;
