@@ -38,6 +38,30 @@ namespace
         return text.substr(first, last - first + 1);
     }
 
+    // Accept names containing letters, spaces, hyphens, and apostrophes.
+    // Reject numeric input, digits inside names, and empty/whitespace-only names.
+    bool isValidName(const string& name)
+    {
+        if (name.empty())
+            return false;
+
+        bool hasLetter = false;
+
+        for (unsigned char ch : name)
+        {
+            if (isalpha(ch))
+            {
+                hasLetter = true;
+            }
+            else if (ch != ' ' && ch != '-' && ch != '\'')
+            {
+                return false;
+            }
+        }
+
+        return hasLetter;
+    }
+
     bool readNumber(double& number)
     {
         if (!(cin >> number))
@@ -77,8 +101,17 @@ int main()
     int age;
     double ageInput;
 
-    cout << "Enter your name: ";
-    getline(cin, name);
+    do
+    {
+        cout << "Enter your name: ";
+        getline(cin, name);
+
+        if (!isValidName(name))
+        {
+            cout << "Invalid name! Please use letters only "
+                 << "(spaces, hyphens, and apostrophes are allowed).\n\n";
+        }
+    } while (!isValidName(name));
 
     cout << "Enter your age: ";
 
@@ -171,8 +204,16 @@ int main()
 
     if (recommendations.empty())
     {
-        cout << "\nNo career matches were found. "
-             << "Try adding relevant interests or skills.\n";
+        cout << "\nSorry, we could not find a career match from the details entered.\n";
+        cout << "This does not mean your interests are wrong; they may not match "
+             << "the career database yet.\n\n";
+        cout << "Try describing your interests or strengths in different words.\n";
+        cout << "Examples of interests: Programming, Technology, Art, Design, "
+             << "Sports, Cooking, Research, Helping Others.\n";
+        cout << "Examples of strengths: Sharp Mind, Good Listener, Problem Solving, "
+             << "Communication, Creativity, Good Memory, Fixing Things.\n";
+        cout << "You can enter multiple items separated by commas.\n";
+        cout << "Please run Career Navigator again and try another description.\n";
         return 0;
     }
 
