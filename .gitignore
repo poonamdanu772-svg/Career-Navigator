@@ -1,2 +1,7 @@
+build/
 *.o
-*.exe
+*.a
+*.so
+*.dylib
+.DS_Store
+career_navigator
